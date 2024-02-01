@@ -20,8 +20,8 @@ mount_fake_partition() {
 }
 
 setup_md5sums() {
-    cd /$LFS/sources
-    wget https://www.linuxfromscratch.org/lfs/view/stable/md5sums --output-file=md5sums
+    cd $LFS/sources
+    wget https://www.linuxfromscratch.org/lfs/view/stable/md5sums
     pushd $LFS/sources
         md5sum -c md5sums
     popd
@@ -150,12 +150,12 @@ install_cross_gcc() {
 
 }
 
-# create_fake_partition
-# mount_fake_partition
-# install_packages
-# construct_final_lfs
-create_lfs_user
-echo $LFS_PASSWORD | su - lfs || true
-setup_env
-compile_binutils
-install_cross_gcc
+create_fake_partition
+mount_fake_partition
+install_packages
+construct_final_lfs
+#create_lfs_user
+#echo $LFS_PASSWORD | su - lfs || true
+#setup_env
+#compile_binutils
+#install_cross_gcc
