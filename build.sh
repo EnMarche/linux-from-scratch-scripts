@@ -27,7 +27,8 @@ compile_binutils() {
 
 install_cross_gcc() {
     cd $LFS/sources
-
+    tar -xf ./gcc-13.2.0.tar.xz
+    cd gcc-13.2.0
     tar -xf ../mpfr-4.2.0.tar.xz
     mv -v mpfr-4.2.0 mpfr
     tar -xf ../gmp-6.3.0.tar.xz
