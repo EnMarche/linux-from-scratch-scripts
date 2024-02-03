@@ -81,10 +81,9 @@ mount_fake_partition() {
 setup_md5sums() {
     cd $LFS/sources
     wget https://www.linuxfromscratch.org/lfs/view/stable/md5sums
-    pushd $LFS/sources
+    cd $LFS/sources
         md5sum -c md5sums
-    popd
-    chown root:root $LFS/sources/*
+    cd $LFS
     echo "Setting up md5sums...done"
 }
 
@@ -97,6 +96,7 @@ install_packages() {
         wget https://www.linuxfromscratch.org/lfs/view/stable/wget-list-sysv --output-file=wget-log-sysv
         wget --input-file=wget-list-sysv --continue --directory-prefix=$LFS/sources
         setup_md5sums
+        chown root:root $LFS/sources/*
     fi
 }
 

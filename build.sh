@@ -8,8 +8,8 @@ LFS=/mnt/lfs
 
 compile_binutils() {
     cd $LFS/sources
-    tar -xf binutils-2.35.tar.xz
-    cd binutils-2.35
+    tar -xf binutils-2.41.tar.xz
+    cd binutils-2.41
     mkdir -v build
     cd build
     ../configure --prefix=$LFS/tools \
@@ -21,7 +21,7 @@ compile_binutils() {
     make
     make install
     cd ../..
-    rm -rf binutils-2.35
+    rm -rf binutils-2.41
     echo "Compiling binutils...done"
 }
 
