@@ -20,9 +20,10 @@ compile_binutils() {
              --disable-werror
     make
     make install
-    cd ../..
+    cd $LFS/sources
     rm -rf binutils-2.41
-    echo "Compiling binutils...done"
+    echo -ne "\n\nCompiling binutils...done\n"
+    sleep 1
 }
 
 install_cross_gcc() {
@@ -71,8 +72,10 @@ install_cross_gcc() {
     cd ..
     cat gcc/limitx.h gcc/glimits.h gcc/limity.h > \
     `dirname $($LFS_TGT-gcc -print-libgcc-file-name)`/include/limits.h
-
-    echo "Installing cross gcc...done"
+    cd $LFS/sources
+    rm -rf gcc-13.2.0
+    echo -ne "\n\nInstalling cross gcc...done\n"
+    sleep 1
 
 }
 
@@ -84,6 +87,10 @@ install_linux_headers() {
     make headers
     find usr/include -type f ! -name '*.h' -delete
     cp -rv usr/include $LFS/usr
+    cd $LFS/sources
+    rm -rf linux-6.4.12
+    echo -ne "\n\nInstalling linux headers...done\n"
+    sleep 1
 }
 
 install_glibc() {
@@ -117,9 +124,42 @@ install_glibc() {
     echo 'int main(){}' | $LFS_TGT-gcc -xc -
     readelf -l a.out | grep ld-linux
     rm -v a.out
+    cd $LFS/sources
+    rm -rf glibc-2.38
+    echo -ne "\n\nInstalling glibc...done\n"
+    sleep 1
+}
+
+install_lib_stdc++() {
+    cd $LFS/sources
+    tar -xf gcc-13.2.0.tar.xz
+    cd gcc-13.2.0
+    mkdir -v build
+    cd       build
+    ../libstdc++-v3/configure           \
+    --host=$LFS_TGT                 \
+    --build=$(../config.guess)      \
+    --prefix=/usr                   \
+    --disable-multilib              \
+    --disable-nls                   \
+    --disable-libstdcxx-pch         \
+    --with-gxx-include-dir=/tools/$LFS_TGT/include/c++/13.2.0
+    ../libstdc++-v3/configure           \
+    --host=$LFS_TGT                 \
+    --build=$(../config.guess)      \
+    --prefix=/usr                   \
+    --disable-multilib              \
+    --disable-nls                   \
+    --disable-libstdcxx-pch         \
+    --with-gxx-include-dir=/tools/$LFS_TGT/include/c++/13.2.0
+
+    make DESTDIR=$LFS install
+    rm -v $LFS/usr/lib/lib{stdc++,stdc++fs,supc++}.la
+
 }
 
 # compile_binutils
 # install_cross_gcc
-install_linux_headers
-install_glibc
+# install_linux_headers
+# install_glibc
+# install_lib_stdc++
