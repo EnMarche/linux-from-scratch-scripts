@@ -125,21 +125,44 @@ create_lfs_user() {
 }
 
 
+setup_env() {
+echo test
+cat > /home/$LFS/.bash_profile << EOF
+exec env -i HOME=/home/$LFS TERM=$TERM PS1='\u:\w\$ ' /bin/bash
+EOF
+
+cat > /home/$LFS/.bashrc << EOF
+set +h
+umask 022
+LFS=/mnt/lfs
+LC_ALL=POSIX
+LFS_TGT=$(uname -m)-lfs-linux-gnu
+PATH=/usr/bin
+if [ ! -L /bin ]; then PATH=/bin:\$PATH; fi
+PATH=\$LFS/tools/bin:\$PATH
+CONFIG_SITE=\$LFS/usr/share/config.site
+export LFS LC_ALL LFS_TGT PATH CONFIG_SITE
+EOF
+
+echo "Setting up environment...done"
+}
+
+
 if [ $CLEANUP == true ]; then
     cleanup
 fi
+
+
 
 create_fake_partition
 mount_fake_partition
 install_packages
 construct_final_lfs
 create_lfs_user
+setup_env
 
-cp -v $SCRIPT_DIR/setup_env.sh $LFS
 cp -v $SCRIPT_DIR/build.sh $LFS
 
-echo "Now run the following commands:"
+echo -ne "\n\n\nNow run the following commands:\n"
 echo "su - $LFS_USER"
-echo "$LFS/setup_env.sh"
-echo "source ~/.bash_profile"
 echo "$LFS/build.sh"

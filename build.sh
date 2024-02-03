@@ -10,7 +10,7 @@ compile_binutils() {
     cd $LFS/sources
     tar -xf binutils-2.41.tar.xz
     cd binutils-2.41
-    mkdir -v build
+    mkdir -pv build
     cd build
     ../configure --prefix=$LFS/tools \
              --with-sysroot=$LFS \
