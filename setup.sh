@@ -162,6 +162,7 @@ create_lfs_user
 setup_env
 
 cp -v $SCRIPT_DIR/build_cross_toolchain.sh $LFS
+cp -v $SCRIPT_DIR/build_temp_tools.sh $LFS
 
 echo -ne "\n\n\nNow run the following commands:\n"
 echo "su - $LFS_USER"
