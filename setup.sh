@@ -1,22 +1,81 @@
 #!/bin/bash
-set -eu pipefail
+set -euo pipefail
 
 # TODO: check if user has prerequisites https://www.linuxfromscratch.org/lfs/view/stable/partintro/generalinstructions.html
 
+usage() {
+    echo "Usage: $0 [OPTIONS]" 1>&2;
+    echo -ne "Options:\n  -c  Cleanup \$LFS partition before starting script\n"
+    echo -ne "  -s  Skip installation of sources\n"
+}
+
+
+if [ "$EUID" -ne 0 ]
+  then echo "Please run as root"
+  exit
+fi
+
+
+CLEANUP=false
+SKIP_INSTALL_PACKAGES=false
+
+
+while getopts ":cs" opt; do
+  case ${opt} in
+    c )
+      CLEANUP=true
+      # Do something here when option -c is passed
+      ;;
+    s )
+      SKIP_INSTALL_PACKAGES=true
+      ;;
+    \? )
+      echo "Invalid option: $OPTARG" 1>&2
+      usage
+      exit 1
+      ;;
+    : )
+      echo "Option -$OPTARG requires an argument" 1>&2
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+HOME=$(eval  echo ~$SUDO_USER)
 LFS=/mnt/lfs
 LFS_FILE=$HOME/lfs_disk
+LFS_USER=lfs
 LFS_PASSWORD=pass
 
+
+
+
+
+cleanup() {
+    rm -rf $LFS/* $LFS/.*
+}
+
 create_fake_partition() {
-    dd if=/dev/zero of=$LFS_FILE bs=1G count=20
-    echo "Creating fake partition...done"
-    mkfs.ext4 $LFS_FILE
+    if [ ! -f "$LFS_FILE" ]; then
+        echo creating partition, do not interupt
+        dd if=/dev/zero of=$LFS_FILE bs=1G count=20
+        mkfs.ext4 $LFS_FILE
+        chown $SUDO_USER:$SUDO_USER $LFS_FILE
+        echo "Creating fake partition...done"
+    fi
 }
 
 mount_fake_partition() {
     mkdir -pv $LFS
-    mount -v -t ext4 $LFS_FILE $LFS
-    echo "Mounting fake partition...done"
+    if mountpoint $LFS; then
+        echo partition already mounted
+    else
+        mount -v -t ext4 $LFS_FILE $LFS
+        echo "Mounting fake partition...done"
+    fi
 }
 
 setup_md5sums() {
@@ -30,12 +89,15 @@ setup_md5sums() {
 }
 
 install_packages() {
-    mkdir -v $LFS/sources
-    chmod -v a+wt $LFS/sources
-    cd $LFS
-    wget https://www.linuxfromscratch.org/lfs/view/stable/wget-list-sysv --output-file=wget-log-sysv
-    wget --input-file=wget-list-sysv --continue --directory-prefix=$LFS/sources
-    setup_md5sums
+    if [ $SKIP_INSTALL_PACKAGES == false ]; then
+        rm -rf $LFS/sources
+        mkdir -v $LFS/sources
+        chmod -v a+wt $LFS/sources
+        cd $LFS
+        wget https://www.linuxfromscratch.org/lfs/view/stable/wget-list-sysv --output-file=wget-log-sysv
+        wget --input-file=wget-list-sysv --continue --directory-prefix=$LFS/sources
+        setup_md5sums
+    fi
 }
 
 construct_final_lfs() {
@@ -53,109 +115,31 @@ construct_final_lfs() {
 }
 
 create_lfs_user() {
-    groupadd lfs || true
-    useradd -s /bin/bash -g lfs -m -k /dev/null lfs || true
-    echo -ne $LFS_PASSWORD\n$LFS_PASSWORD | passwd lfs
-}
-
-setup_env() {
-    cat > ~/.bash_profile << EOF
-    exec env -i HOME=$HOME TERM=$TERM PS1='\u:\w\$ ' /bin/bash
-EOF
-
-
-    cat > ~/.bashrc << EOF
-    set +h
-    umask 022
-    LFS=/mnt/lfs
-    LC_ALL=POSIX
-    LFS_TGT=$(uname -m)-lfs-linux-gnu
-    PATH=/usr/bin
-    if [ ! -L /bin ]; then PATH=/bin:$PATH; fi
-    PATH=$LFS/tools/bin:$PATH
-    CONFIG_SITE=$LFS/usr/share/config.site
-    export LFS LC_ALL LFS_TGT PATH CONFIG_SITE
-EOF
-
-    source ~/.bash_profile
-    echo "Setting up environment...done"
-}
-
-compile_binutils() {
-    cd $LFS/sources
-    tar -xf binutils-2.35.tar.xz
-    cd binutils-2.35
-    mkdir -v build
-    cd build
-    ../configure --prefix=$LFS/tools \
-             --with-sysroot=$LFS \
-             --target=$LFS_TGT   \
-             --disable-nls       \
-             --enable-gprofng=no \
-             --disable-werror
-    make
-    make install
-    cd ../..
-    rm -rf binutils-2.35
-    echo "Compiling binutils...done"
-}
-
-install_cross_gcc() {
-    cd $LFS/sources
-
-    tar -xf ../mpfr-4.2.0.tar.xz
-    mv -v mpfr-4.2.0 mpfr
-    tar -xf ../gmp-6.3.0.tar.xz
-    mv -v gmp-6.3.0 gmp
-    tar -xf ../mpc-1.3.1.tar.gz
-    mv -v mpc-1.3.1 mpc
-
-    case $(uname -m) in x86_64)
-        sed -e '/m64=/s/lib64/lib/' \
-            -i.orig gcc/config/i386/t-linux64
-        ;;
+    groupadd $LFS_USER || true
+    useradd -s /bin/bash -g $LFS_USER -m -k /dev/null $LFS_USER || true
+    echo $LFS_USER:$LFS_PASSWORD | chpasswd
+    chown -v $LFS_USER $LFS/{usr{,/*},lib,var,etc,bin,sbin,tools}
+    case $(uname -m) in
+        x86_64) chown -v $LFS_USER $LFS/lib64 ;;
     esac
-
-    mkdir -v build
-    cd       build
-
-    ../configure                 \
-    --target=$LFS_TGT         \
-    --prefix=$LFS/tools       \
-    --with-glibc-version=2.38 \
-    --with-sysroot=$LFS       \
-    --with-newlib             \
-    --without-headers         \
-    --enable-default-pie      \
-    --enable-default-ssp      \
-    --disable-nls             \
-    --disable-shared          \
-    --disable-multilib        \
-    --disable-threads         \
-    --disable-libatomic       \
-    --disable-libgomp         \
-    --disable-libquadmath     \
-    --disable-libssp          \
-    --disable-libvtv          \
-    --disable-libstdcxx       \
-    --enable-languages=c,c++
-
-    make && make install
-
-    cd ..
-    cat gcc/limitx.h gcc/glimits.h gcc/limity.h > \
-    `dirname $($LFS_TGT-gcc -print-libgcc-file-name)`/include/limits.h
-
-    echo "Installing cross gcc...done"
-
 }
+
+
+if [ $CLEANUP == true ]; then
+    cleanup
+fi
 
 create_fake_partition
 mount_fake_partition
 install_packages
 construct_final_lfs
-#create_lfs_user
-#echo $LFS_PASSWORD | su - lfs || true
-#setup_env
-#compile_binutils
-#install_cross_gcc
+create_lfs_user
+
+cp -v $SCRIPT_DIR/setup_env.sh $LFS
+cp -v $SCRIPT_DIR/build.sh $LFS
+
+echo "Now run the following commands:"
+echo "su - $LFS_USER"
+echo "$LFS/setup_env.sh"
+echo "source ~/.bash_profile"
+echo "$LFS/build.sh"
