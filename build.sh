@@ -42,7 +42,7 @@ install_cross_gcc() {
         ;;
     esac
 
-    mkdir -v build
+    mkdir -pv build
     cd       build
 
     ../configure                 \
@@ -100,7 +100,7 @@ install_glibc() {
     esac
 
     patch -Np1 -i ../glibc-2.38-fhs-1.patch
-    mkdir -v build
+    mkdir -pv build
     cd build
     echo "rootsbindir=/usr/sbin" > configparms
     ../configure                             \
