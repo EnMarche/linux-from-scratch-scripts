@@ -127,11 +127,11 @@ create_lfs_user() {
 
 setup_env() {
 echo test
-cat > /home/$LFS/.bash_profile << EOF
-exec env -i HOME=/home/$LFS TERM=$TERM PS1='\u:\w\$ ' /bin/bash
+cat > /home/$LFS_USER/.bash_profile << EOF
+exec env -i HOME=/home/$LFS_USER TERM=$TERM PS1='\u:\w\$ ' /bin/bash
 EOF
 
-cat > /home/$LFS/.bashrc << EOF
+cat > /home/$LFS_USER/.bashrc << EOF
 set +h
 umask 022
 LFS=/mnt/lfs
