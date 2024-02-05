@@ -230,7 +230,7 @@ compile_xz() {
 
 compile_binutils_pass2() {
   config_sources binutils-2.41 xz
-  mkdir -v build
+  mkdir -pv build
   cd build
   ../configure                   \
     --prefix=/usr              \
