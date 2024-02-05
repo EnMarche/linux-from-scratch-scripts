@@ -24,7 +24,7 @@ backup() {
 
   cd $LFS
   if hash pv 2>/dev/null; then
-    tar -cJpf - . -P |  pv -s $(du -sb . | awk '{print $1}') | gzip > $HOME/lfs-temp-tools-12.0.tar.xz
+      tar -cJpf - . |  pv -s $(du -sb . | awk '{print $1}') > $HOME/lfs-temp-tools-12.0.tar.xz
     else
       tar -cJpf $HOME/lfs-temp-tools-12.0.tar.xz .
     fi
