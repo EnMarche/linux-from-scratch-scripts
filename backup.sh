@@ -14,14 +14,20 @@ else
     exit 1
 fi
 
+HOME=$(eval  echo ~$SUDO_USER)
 
 backup() {
-  mountpoint -q $LFS/dev/shm && umount $LFS/dev/shm
-  umount $LFS/dev/pts
-  umount $LFS/{sys,proc,run,dev}
+  echo backing up $LFS
+  # mountpoint -q $LFS/dev/shm && umount $LFS/dev/shm
+  # umount $LFS/dev/pts
+  # umount $LFS/{sys,proc,run,dev}
 
   cd $LFS
-  tar -cJpf $HOME/lfs-temp-tools-12.0.tar.xz .
+  if hash pv 2>/dev/null; then
+    tar -cJpf - . -P |  pv -s $(du -sb . | awk '{print $1}') | gzip > $HOME/lfs-temp-tools-12.0.tar.xz
+    else
+      tar -cJpf $HOME/lfs-temp-tools-12.0.tar.xz .
+    fi
 }
 
 
@@ -32,6 +38,7 @@ restore() {
   read answer
   if [ "$answer" != "${answer#[Yy]}" ] ;then
       echo "Continuing..."
+      echo restoring
   else
       echo "Exiting..."
       exit 1

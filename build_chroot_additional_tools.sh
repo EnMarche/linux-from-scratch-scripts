@@ -116,4 +116,6 @@ cleanup
 
 
 echo -ne "\n\n\nNow would be a good time to backup the LFS partition\n"
-echo "You can do this by running the following command:"
+echo "You can do this by running the following command, as root (not chroot):"
+echo "/backup.sh -b"
+exit 0
