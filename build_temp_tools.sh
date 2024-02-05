@@ -4,7 +4,6 @@ set -euo pipefail
 #TODO ADINA rends ce code propre et stérile comme une seringue avant injection d'anesthésiant
 
 
-LFS_USER=lfs
 LFS=/mnt/lfs
 
 config_sources() {
@@ -230,6 +229,7 @@ compile_xz() {
 
 compile_binutils_pass2() {
   config_sources binutils-2.41 xz
+  sed '6009s/$add_dir//' -i ltmain.sh
   mkdir -pv build
   cd build
   ../configure                   \
@@ -267,7 +267,7 @@ compile_gcc_pass2() {
       -i libgcc/Makefile.in libstdc++-v3/include/Makefile.in
   mkdir -v build
   cd build
-  ../configure                                       \
+  ../configure                                     \
     --build=$(../config.guess)                     \
     --host=$LFS_TGT                                \
     --target=$LFS_TGT                              \
@@ -306,5 +306,10 @@ compile_make
 compile_patch
 compile_sed
 compile_tar
+compile_xz
 compile_binutils_pass2
 compile_gcc_pass2
+
+
+echo -ne "\n\n\nNow run the following commands as root:\n"
+echo "$LFS/prepare_chroot.sh"

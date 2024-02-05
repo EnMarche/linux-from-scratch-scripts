@@ -118,7 +118,8 @@ create_lfs_user() {
     groupadd $LFS_USER || true
     useradd -s /bin/bash -g $LFS_USER -m -k /dev/null $LFS_USER || true
     echo $LFS_USER:$LFS_PASSWORD | chpasswd
-    chown -v $LFS_USER $LFS/{usr{,/*},lib,var,etc,bin,sbin,tools}
+    # I added the -R option, maybe it's not necessary
+    chown -vR $LFS_USER $LFS/{usr{,/*},lib,var,etc,bin,sbin,tools}
     case $(uname -m) in
         x86_64) chown -v $LFS_USER $LFS/lib64 ;;
     esac
@@ -163,6 +164,9 @@ setup_env
 
 cp -v $SCRIPT_DIR/build_cross_toolchain.sh $LFS
 cp -v $SCRIPT_DIR/build_temp_tools.sh $LFS
+cp -v $SCRIPT_DIR/prepare_chroot.sh $LFS
+cp -v $SCRIPT_DIR/chroot_build_dirs.sh $LFS
+cp -v $SCRIPT_DIR/build_chroot_additional_tools.sh $LFS
 
 echo -ne "\n\n\nNow run the following commands:\n"
 echo "su - $LFS_USER"

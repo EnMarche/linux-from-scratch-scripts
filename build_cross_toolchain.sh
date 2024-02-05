@@ -154,20 +154,16 @@ install_lib_stdc++() {
     --with-gxx-include-dir=/tools/$LFS_TGT/include/c++/13.2.0
 
     make DESTDIR=$LFS install
-    rm -v $LFS/usr/lib/lib{stdc++,stdc++fs,supc++}.la
+    cd $LFS/sources
     rm -rf gcc-13.2.0
+    rm -v $LFS/usr/lib/lib{stdc++,stdc++fs,supc++}.la
 }
 
 compile_binutils
 install_cross_gcc
-<<<<<<< HEAD:build.sh
-install_linux_headers
-install_glibc
-=======
 install_linux_headers
 install_glibc
 install_lib_stdc++
 
 echo -ne "\n\n\nNow run the following commands:\n"
 echo "$LFS/build_temp_tools.sh"
->>>>>>> 7b88363c882f5ffc550137da560369cd4c03e362:build_cross_toolchain.sh
