@@ -508,6 +508,530 @@ install_shadow() {
   log_compil_end "shadow"
 }
 
+install_gcc() {
+  config_sources gcc-13.2.0 xz
+  case $(uname -m) in
+    x86_64)
+      sed -e '/m64=/s/lib64/lib/' \
+          -i.orig gcc/config/i386/t-linux64
+    ;;
+  esac
+  mkdir -v build
+  cd       build
+
+
+  ../configure --prefix=/usr            \
+            LD=ld                    \
+            --enable-languages=c,c++ \
+            --enable-default-pie     \
+            --enable-default-ssp     \
+            --disable-multilib       \
+            --disable-bootstrap      \
+            --disable-fixincludes    \
+            --with-system-zlib
+  make
+  ulimit -s 32768
+  chown -Rv tester .
+  su tester -c "PATH=$PATH make -k $MAKEFLAGS check"
+  ../contrib/test_summary
+  sleep 5
+  make install
+  chown -v -R root:root \
+    /usr/lib/gcc/$(gcc -dumpmachine)/13.2.0/include{,-fixed}
+  ln -svr /usr/bin/cpp /usr/lib
+  ln -sv gcc.1 /usr/share/man/man1/cc.1
+
+
+  ln -sfv ../../libexec/gcc/$(gcc -dumpmachine)/13.2.0/liblto_plugin.so \
+        /usr/lib/bfd-plugins/
+  echo 'int main(){}' > dummy.c
+  cc dummy.c -v -Wl,--verbose &> dummy.log
+  readelf -l a.out | grep ': /lib'
+  sleep 1
+  grep -E -o '/usr/lib.*/S?crt[1in].*succeeded' dummy.log
+  grep -B4 '^ /usr/include' dummy.log
+  sleep 5
+  grep 'SEARCH.*/usr/lib' dummy.log |sed 's|; |\n|g'
+  sleep 5
+  grep "/lib.*/libc.so.6 " dummy.log
+  sleep 5
+  grep found dummy.log
+  sleep 5
+  rm -v dummy.c a.out dummy.log
+  mkdir -pv /usr/share/gdb/auto-load/usr/lib
+  mv -v /usr/lib/*gdb.py /usr/share/gdb/auto-load/usr/lib
+  clean_sources gcc-13.2.0
+  log_compil_end "gcc"
+}
+
+install_pkgconf() {
+  config_sources pkgconf-2.0.1 xz
+  ./configure --prefix=/usr              \
+            --disable-static           \
+            --docdir=/usr/share/doc/pkgconf-2.0.1
+  make
+  make install
+  ln -sv pkgconf   /usr/bin/pkg-config
+  ln -sv pkgconf.1 /usr/share/man/man1/pkg-config.1
+  clean_sources pkgconf-2.0.1
+  log_compil_end "pkgconf"
+}
+
+install_ncurses() {
+  config_sources ncurses-6.4 gz
+  ./configure --prefix=/usr           \
+            --mandir=/usr/share/man \
+            --with-shared           \
+            --without-debug         \
+            --without-normal        \
+            --with-cxx-shared       \
+            --enable-pc-files       \
+            --enable-widec          \
+            --with-pkg-config-libdir=/usr/lib/pkgconfig
+  make
+  make DESTDIR=$PWD/dest install
+  install -vm755 dest/usr/lib/libncursesw.so.6.4 /usr/lib
+  rm -v  dest/usr/lib/libncursesw.so.6.4
+  cp -av dest/* /
+  for lib in ncurses form panel menu ; do
+    rm -vf                    /usr/lib/lib${lib}.so
+    echo "INPUT(-l${lib}w)" > /usr/lib/lib${lib}.so
+    ln -sfv ${lib}w.pc        /usr/lib/pkgconfig/${lib}.pc
+  done
+  rm -vf                     /usr/lib/libcursesw.so
+  echo "INPUT(-lncursesw)" > /usr/lib/libcursesw.so
+  ln -sfv libncurses.so      /usr/lib/libcurses.so
+  cp -v -R doc -T /usr/share/doc/ncurses-6.4
+
+  # The instructions above don't create non-wide-character Ncurses libraries since no package installed by compiling from sources would link against them at runtime. However, the only known binary-only applications that link against non-wide-character Ncurses libraries require version 5. If you must have such libraries because of some binary-only application or to be compliant with LSB, build the package again with the following commands: 
+  make distclean
+  ./configure --prefix=/usr    \
+              --with-shared    \
+              --without-normal \
+              --without-debug  \
+              --without-cxx-binding \
+              --with-abi-version=5
+  make sources libs
+  cp -av lib/lib*.so.5* /usr/lib
+  clean_sources ncurses-6.4
+  log_compil_end "ncurses"
+}
+
+install_sed() {
+  config_sources sed-4.9 xz
+  ./configure --prefix=/usr --bindir=/bin
+  make
+  make html
+  chown -Rv tester .
+  su tester -c "PATH=$PATH make $MAKEFLAGS check"
+  make install
+  install -d -m755           /usr/share/doc/sed-4.9
+  install -m644 doc/sed.html /usr/share/doc/sed-4.9
+  clean_sources sed-4.9
+  log_compil_end "sed"
+}
+
+install_psmisc() {
+  config_sources psmisc-23.6 xz
+  ./configure --prefix=/usr
+  make
+  make check
+  make install
+  clean_sources psmisc-23.6
+  log_compil_end "psmisc"
+}
+
+install_gettext() {
+  config_sources gettext-0.22 xz
+  ./configure --prefix=/usr    \
+            --disable-static \
+            --docdir=/usr/share/doc/gettext-0.22
+  make
+  make check
+  make install
+  chmod -v 0755 /usr/lib/preloadable_libintl.so
+  clean_sources gettext-0.22
+  log_compil_end "gettext"
+}
+
+install_bison() {
+  config_sources bison-3.8.2 gz
+  ./configure --prefix=/usr --docdir=/usr/share/doc/bison-3.8.2
+  make
+  make check
+  make install
+  clean_sources bison-3.8.2
+  log_compil_end "bison"
+}
+
+install_grep() {
+  config_sources grep-3.11 xz
+  sed -i "s/echo/#echo/" src/egrep.sh
+  ./configure --prefix=/usr
+  make
+  make check
+  make install
+  clean_sources grep-3.11
+  log_compil_end "grep"
+
+}
+
+install_bash() {
+  config_sources bash-5.1 gz
+  ./configure --prefix=/usr           \
+            --docdir=/usr/share/doc/bash-5.1 \
+            --without-bash-malloc   \
+            --with-installed-readline
+  make
+  chown -Rv tester .
+su -s /usr/bin/expect tester << EOF
+set timeout -1
+spawn make tests
+expect eof
+lassign [wait] _ _ _ value
+exit $value
+EOF
+  make install
+  clean_sources bash-5.1
+  log_compil_end "bash"
+  # exec /usr/bin/bash --login
+
+}
+
+install_libtool() {
+  config_sources libtool-2.4.7 xz
+  ./configure --prefix=/usr
+  make
+  make -k check TESTSUITEFLAGS="$MAKEFLAGS"
+  make install
+  rm -fv /usr/lib/libltdl.a
+  clean_sources libtool-2.4.7
+  log_compil_end "libtool"
+}
+
+install_gdbm() {
+  config_sources gdbm-1.23 xz
+  ./configure --prefix=/usr    \
+            --disable-static \
+            --enable-libgdbm-compat
+  make
+  make check
+  make install
+  clean_sources gdbm-1.23
+  log_compil_end "gdbm"
+}
+
+install_gperf() {
+  config_sources gperf-3.1 gz
+  ./configure --prefix=/usr --docdir=/usr/share/doc/gperf-3.1
+  make
+  make -j1 check
+  make install
+  clean_sources gperf-3.1
+  log_compil_end "gperf"
+}
+
+install_expat() {
+  config_sources expat-2.5.1 gz
+  ./configure --prefix=/usr    \
+            --disable-static \
+            --docdir=/usr/share/doc/expat-2.5.0
+  make
+  make check
+  make install
+  install -v -m644 doc/*.{html,css} /usr/share/doc/expat-2.5.1
+  clean_sources expat-2.5.1
+  log_compil_end "expat"
+}
+
+install_inetutils() {
+  config_sources inetutils-2.4 xz
+  ./configure --prefix=/usr        \
+              --bindir=/usr/bin    \
+              --localstatedir=/var \
+              --disable-logger     \
+              --disable-whois      \
+              --disable-rcp        \
+              --disable-rexec      \
+              --disable-rlogin     \
+              --disable-rsh        \
+              --disable-servers
+  make
+  make check
+  make install
+  mv -v /usr/{,s}bin/ifconfig
+  clean_sources inetutils-2.4
+  log_compil_end "inetutils"
+}
+
+install_less() {
+  config_sources less-643 gz
+  ./configure --prefix=/usr --sysconfdir=/etc
+  make
+  make check
+  make install
+  clean_sources less-643
+  log_compil_end "less"
+}
+
+install_perl() {
+  config_sources perl-5.38.0 gz
+  export BUILD_ZLIB=False
+  export BUILD_BZIP2=0
+  sh Configure -des                                         \
+              -Dprefix=/usr                                \
+              -Dvendorprefix=/usr                          \
+              -Dprivlib=/usr/lib/perl5/5.38/core_perl      \
+              -Darchlib=/usr/lib/perl5/5.38/core_perl      \
+              -Dsitelib=/usr/lib/perl5/5.38/site_perl      \
+              -Dsitearch=/usr/lib/perl5/5.38/site_perl     \
+              -Dvendorlib=/usr/lib/perl5/5.38/vendor_perl  \
+              -Dvendorarch=/usr/lib/perl5/5.38/vendor_perl \
+              -Dman1dir=/usr/share/man/man1                \
+              -Dman3dir=/usr/share/man/man3                \
+              -Dpager="/usr/bin/less -isR"                 \
+              -Duseshrplib                                 \
+              -Dusethreads
+  make
+  make  test
+  make install
+  unset BUILD_ZLIB BUILD_BZIP2
+  clean_sources perl-5.38.0
+  log_compil_end "perl"
+}
+
+install_xml_parser() {
+  config_sources XML-Parser-2.46 gz
+  perl Makefile.PL
+  make
+  make test
+  make install
+  clean_sources XML-Parser-2.46
+  log_compil_end "xml_parser"
+}
+
+install_intltool() {
+  config_sources intltool-0.51.0 gz
+  sed -i 's:\\\${:\\\$\\{:' intltool-update.in
+  ./configure --prefix=/usr
+  make
+  make check
+  make install
+  install -v -Dm644 doc/I18N-HOWTO /usr/share/doc/intltool-0.51.0/I18N-HOWTO
+}
+
+install_autoconf() {
+  config_sources autoconf-2.71 xz
+  sed -e 's/SECONDS|/&SHLVL|/'               \
+    -e '/BASH_ARGV=/a\        /^SHLVL=/ d' \
+    -i.orig tests/local.at
+  ./configure --prefix=/usr
+  make
+  make check TESTSUITEFLAGS="$MAKEFLAGS"
+  make install
+  clean_sources autoconf-2.71
+  log_compil_end "autoconf"
+}
+
+install_automake() {
+  config_sources automake-1.16.5 xz
+  ./configure --prefix=/usr
+  make
+  make check
+  make install
+  clean_sources automake-1.16.5
+  log_compil_end "automake"
+}
+
+install_openssl() {
+  config_sources openssl-3.1.2 gz
+  ./config --prefix=/usr --openssldir=/etc/ssl --libdir=lib shared zlib-dynamic
+  make
+  make test
+  make install
+  sed -i '/INSTALL_LIBS/s/libcrypto.a libssl.a//' Makefile
+  make MANSUFFIX=ssl install
+  mv -v /usr/share/doc/openssl /usr/share/doc/openssl-3.1.2
+  cp -vfr doc/* /usr/share/doc/openssl-3.1.2
+  clean_sources openssl-3.1.2
+  log_compil_end "openssl"
+}
+
+install_kmod() {
+  config_sources kmod-30 xz
+./configure --prefix=/usr          \
+            --sysconfdir=/etc      \
+            --with-openssl         \
+            --with-xz              \
+            --with-zstd            \
+            --with-zlib
+  make
+  make install
+
+  for target in depmod insmod modinfo modprobe rmmod; do
+    ln -sfv ../bin/kmod /usr/sbin/$target
+  done
+
+  ln -sfv kmod /usr/bin/lsmod
+  clean_sources kmod-30
+  log_compil_end "kmod"
+}
+
+install_libelf() {
+  config_sources elfutils-0.189 bz2
+  ./configure --prefix=/usr                \
+            --disable-debuginfod         \
+            --enable-libdebuginfod=dummy
+  make
+  make check
+  make -C libelf install
+  install -vm644 config/libelf.pc /usr/lib/pkgconfig
+  rm /usr/lib/libelf.a
+  clean_sources elfutils-0.189
+  log_compil_end "libelf"
+}
+
+install_libffi() {
+  config_sources libffi-3.4.4 gz
+  ./configure --prefix=/usr          \
+            --disable-static       \
+            --with-gcc-arch=native
+  make
+  make check
+  make install
+  clean_sources libffi-3.4.4
+  log_compil_end "libffi"
+}
+
+install_python() {
+  config_sources Python-3.11.4 xz
+  ./configure --prefix=/usr        \
+            --enable-shared      \
+            --with-system-expat  \
+            --with-system-ffi    \
+            --enable-optimizations
+  make
+  make install
+
+# As we use LFS to build our own distro, we depart from the book and still want to check pip updates
+#   cat > /etc/pip.conf << EOF
+# [global]
+# root-user-action = ignore
+# disable-pip-version-check = true
+# EOF
+  install -v -dm755 /usr/share/doc/python-3.11.4/html
+
+  tar --strip-components=1  \
+      --no-same-owner       \
+      --no-same-permissions \
+      -C /usr/share/doc/python-3.11.4/html \
+      -xvf ../python-3.11.4-docs-html.tar.bz2
+
+  clean_sources Python-3.11.4
+  log_compil_end "python"
+}
+
+install_flit_core() {
+  config_sources flit-core-3.9.0 gz
+  pip3 wheel -w dist --no-build-isolation --no-deps $PWD
+  pip3 install --no-index --no-user --find-links dist flit_core
+  clean_sources flit-core-3.9.0
+  log_compil_end "flit_core"
+}
+
+install_wheel() {
+  config_sources wheel-0.37.0 gz
+  pip3 wheel -w dist --no-build-isolation --no-deps $PWD
+  pip3 install --no-index --no-user --find-links dist wheel
+  clean_sources wheel-0.37.0
+  log_compil_end "wheel"
+}
+
+install_ninja() {
+  config_sources ninja-1.11.1 gz
+  # Ninja can use more jobs than the system can handle, as it focuses on speed. The number of jobs can be set with the NINJAJOBS environment variable. If it is not set, Ninja will use the number of available CPU cores.
+  # export NINJAJOBS=4
+  sed -i '/int Guess/a \
+    int   j = 0;\
+    char* jobs = getenv( "NINJAJOBS" );\
+    if ( jobs != NULL ) j = atoi( jobs );\
+    if ( j > 0 ) return j;\
+  ' src/ninja.cc
+  python3 configure.py --bootstrap
+  install -vm755 ninja /usr/bin/
+  install -vDm644 misc/bash-completion /usr/share/bash-completion/completions/ninja
+  install -vDm644 misc/zsh-completion  /usr/share/zsh/site-functions/_ninja
+  clean_sources ninja-1.11.1
+  log_compil_end "ninja"
+}
+
+install_meson() {
+  config_sources meson-1.2.1 gz
+  pip3 wheel -w dist --no-build-isolation --no-deps $PWD
+  pip3 install --no-index --find-links dist meson
+  install -vDm644 data/shell-completions/bash/meson /usr/share/bash-completion/completions/meson
+  install -vDm644 data/shell-completions/zsh/_meson /usr/share/zsh/site-functions/_meson
+  clean_sources meson-1.2.1
+  log_compil_end "meson"
+}
+
+install_coreutils() {
+  config_sources coreutils-9.3 xz
+  patch -Np1 -i ../coreutils-9.3-i18n-1.patch
+  autoreconf -fiv
+  FORCE_UNSAFE_CONFIGURE=1 ./configure \
+            --prefix=/usr            \
+            --enable-no-install-program=kill,uptime
+  make
+  make NON_ROOT_USERNAME=tester check-root
+  groupadd -g 102 dummy -U tester
+  chown -Rv tester .
+  su tester -c "PATH=$PATH make RUN_EXPENSIVE_TESTS=yes check"
+  groupdel dummy
+  make install
+  mv -v /usr/bin/chroot /usr/sbin
+  mv -v /usr/share/man/man1/chroot.1 /usr/share/man/man8/chroot.8
+  sed -i 's/"1"/"8"/' /usr/share/man/man8/chroot.8
+  clean_sources coreutils-9.3
+  log_compil_end "coreutils"
+}
+
+install_check() {
+  config_sources check-0.15.2 gz
+  ./configure --prefix=/usr --disable-static
+  make
+  make check
+  make docdir=/usr/share/doc/check-0.15.2 install
+  clean_sources check-0.15.2
+  log_compil_end "check"
+
+}
+
+install_diffutils() {
+  config_sources diffutils-3.10 xz
+  ./configure --prefix=/usr
+  make
+  make check
+  make install
+  clean_sources diffutils-3.10
+  log_compil_end "diffutils"
+}
+
+install_gawk() {
+  config_sources gawk-5.2.2 xz
+  sed -i 's/extras//' Makefile.in
+  ./configure --prefix=/usr
+  make
+  chown -Rv tester .
+  su tester -c "PATH=$PATH make check"
+  make LN='ln -f' install
+  ln -sv gawk.1 /usr/share/man/man1/awk.1
+  mkdir -pv                                   /usr/share/doc/gawk-5.2.2
+  cp    -v doc/{awkforai.txt,*.{eps,pdf,jpg}} /usr/share/doc/gawk-5.2.2
+  clean_sources gawk-5.2.2
+  log_compil_end "gawk"
+}
+
 build_man_pages
 setup_iana_etc
 install_glibc
@@ -531,3 +1055,36 @@ install_acl
 install_libcap
 install_libxcrypt
 install_shadow
+install_gcc
+install_pkgconf
+install_ncurses
+install_sed
+install_psmisc
+install_gettext
+install_bison
+install_grep
+install_bash
+install_libtool
+install_gdbm
+install_gperf
+install_expat
+install_inetutils
+install_less
+install_perl
+install_xml_parser
+install_intltool
+install_autoconf
+install_automake
+install_openssl
+install_kmod
+install_libelf
+install_libffi
+install_python
+install_flit_core
+install_wheel
+install_ninja
+install_meson
+install_coreutils
+install_check
+install_diffutils
+install_gawk
