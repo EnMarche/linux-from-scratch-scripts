@@ -1032,6 +1032,367 @@ install_gawk() {
   log_compil_end "gawk"
 }
 
+install_find_utils() {
+  config_sources findutils-4.9.0 xz
+  ./configure --prefix=/usr --localstatedir=/var/lib/locate
+  make
+  chown -Rv tester .
+  su tester -c "PATH=$PATH make check"
+  make install
+  clean_sources findutils-4.9.0
+  log_compil_end "findutils"
+}
+
+install_groff() {
+  config_sources groff-1.23.0 gz
+  PAGE=A4 ./configure --prefix=/usr
+  make check
+  make install
+  clean_sources groff-1.23.0
+  log_compil_end groff
+}
+
+install_grub() {
+  config_sources grub-2.06 xz
+  unset {C,CPP,CXX,LD}FLAGS
+  patch -Np1 -i ../grub-2.06-upstream_fixes-1.patch
+  ./configure --prefix=/usr          \
+            --sysconfdir=/etc      \
+            --disable-efiemu       \
+            --disable-werror
+  make
+  make install
+  mv -v /etc/bash_completion.d/grub /usr/share/bash-completion/completions
+  clean_sources grub-2.06
+  log_compil_end "grub"
+}
+
+install_gzip() {
+  config_sources gzip-1.12 xz
+  ./configure --prefix=/usr
+  make
+  make check
+  make install
+  clean_sources gzip-1.12
+  log_compil_end "gzip"
+}
+
+install_iproute() {
+  config_sources iproute2-6.4.0 xz
+  sed -i /ARPD/d Makefile
+  rm -fv man/man8/arpd.8
+  make NETNS_RUN_DIR=/run/netns
+  make SBINDIR=/usr/sbin install
+  mkdir -pv             /usr/share/doc/iproute2-6.4.0
+  cp -v COPYING README* /usr/share/doc/iproute2-6.4.0
+  clean_sources iproute2-6.4.0
+  log_compil_end "iproute"
+}
+
+install_kbd() {
+  config_sources kbd-2.6.1 xz
+  patch -Np1 -i ../kbd-2.6.1-backspace-1.patch
+  sed -i '/RESIZECONS_PROGS=/s/yes/no/' configure
+  sed -i 's/resizecons.8 //' docs/man/man8/Makefile.in
+  ./configure --prefix=/usr --disable-vlock
+  make
+  make check
+  make install
+  cp -R -v docs/doc -T /usr/share/doc/kbd-2.6.1
+  clean_sources kbd-2.6.1
+  log_compil_end "kbd"
+}
+
+
+install_libpipeline() {
+  config_sources libpipeline-1.5.7 gz
+  ./configure --prefix=/usr
+  make
+  make check
+  make install
+  clean_sources libpipeline-1.5.7
+  log_compil_end "libpipeline"
+}
+
+
+install_make() {
+  config_sources make-4.4.1 gz
+  ./configure --prefix=/usr
+  make
+  chown -Rv tester .
+  su tester -c "PATH=$PATH make check"
+  make install
+  clean_sources make-4.4.1
+  log_compil_end "make"
+}
+
+install_patch() {
+  config_sources patch-2.7.6 xz
+  ./configure --prefix=/usr
+  make
+  make check
+  make install
+  clean_sources patch-2.7.6
+  log_compil_end "patch"
+}
+
+install_tar() {
+  config_sources tar-1.35 xz
+  FORCE_UNSAFE_CONFIGURE=1  \
+    ./configure --prefix=/usr
+  make
+  make check TESTFLAGS="$MAKEFLAGS"
+  make install
+  make -C doc install-html docdir=/usr/share/doc/tar-1.35
+  clean_sources tar-1.35
+  log_compil_end "tar"
+}
+
+install_texinfo() {
+  config_sources texinfo-7.0.3 xz
+  ./configure --prefix=/usr
+  make
+  make check
+  make install
+  make TEXMF=/usr/share/texmf install-tex
+  cd /usr/share/info
+  rm -v dir
+  for f in *
+    do install-info $f dir 2>/dev/null
+  done
+  cd /sources
+  clean_sources texinfo-7.0.3
+  log_compil_end "texinfo"
+}
+
+install_vim() {
+  config_sources vim-9.0.1667 gz
+  echo '#define SYS_VIMRC_FILE "/etc/vimrc"' >> src/feature.h
+  ./configure --prefix=/usr
+  make
+  chown -Rv tester .
+  su tester -c "LANG=en_US.UTF-8 make -j1 test" &> vim-test.log
+  make install
+  ln -sv vim /usr/bin/vi
+  for L in  /usr/share/man/{,*/}man1/vim.1; do
+    ln -sv vim.1 $(dirname $L)/vi.1
+  done
+  ln -sv ../vim/vim90/doc /usr/share/doc/vim-9.0.1677
+cat > /etc/vimrc << "EOF"
+" Begin /etc/vimrc
+
+" Ensure defaults are set before customizing settings, not after
+source $VIMRUNTIME/defaults.vim
+let skip_defaults_vim=1
+
+set nocompatible
+set backspace=2
+set mouse=
+set spelllang=en,fr
+set spell
+syntax on
+if (&term == "xterm") || (&term == "putty")
+  set background=dark
+endif
+
+" End /etc/vimrc
+EOF
+  clean_sources vim-9.0.1667
+  log_compil_end "vim"
+}
+
+install_markupsafe() {
+  config_sources MarkupSafe-2.1.3 gz
+  pip3 wheel -w dist --no-build-isolation --no-deps $PWD
+  pip3 install --no-index --no-user --find-links dist Markupsafe
+  clean_sources MarkupSafe-2.1.3
+  log_compil_end "markupsafe"
+}
+
+install_jinja() {
+  config_sources Jinja2-3.1.2 gz
+  pip3 wheel -w dist --no-build-isolation --no-deps $PWD
+  pip3 install --no-index --no-user --find-links dist Jinja2
+  clean_sources Jinja2-3.1.2
+  log_compil_end "jinja"
+}
+
+install_udev_systemd_254() {
+  #TODO: might have to modify this if want to install systemd
+  config_sources systemd-254 gz
+  sed -i -e 's/GROUP="render"/GROUP="video"/' \
+        -e 's/GROUP="sgx", //' rules.d/50-udev-default.rules.in
+  sed '/systemd-sysctl/s/^/#/' -i rules.d/99-systemd.rules.in
+  mkdir -p build
+  cd       build
+
+  meson setup \
+        --prefix=/usr                 \
+        --buildtype=release           \
+        -Dmode=release                \
+        -Ddev-kvm-mode=0660           \
+        -Dlink-udev-shared=false      \
+        ..
+  ninja udevadm systemd-hwdb \
+      $(grep -o -E "^build (src/libudev|src/udev|rules.d|hwdb.d)[^:]*" \
+        build.ninja | awk '{ print $2 }')                              \
+      $(realpath libudev.so --relative-to .)
+  rm rules.d/90-vconsole.rules
+  install -vm755 -d {/usr/lib,/etc}/udev/{hwdb,rules}.d
+  install -vm755 -d /usr/{lib,share}/pkgconfig
+  install -vm755 udevadm                     /usr/bin/
+  install -vm755 systemd-hwdb                /usr/bin/udev-hwdb
+  ln      -svfn  ../bin/udevadm              /usr/sbin/udevd
+  cp      -av    libudev.so{,*[0-9]}         /usr/lib/
+  install -vm644 ../src/libudev/libudev.h    /usr/include/
+  install -vm644 src/libudev/*.pc            /usr/lib/pkgconfig/
+  install -vm644 src/udev/*.pc               /usr/share/pkgconfig/
+  install -vm644 ../src/udev/udev.conf       /etc/udev/
+  install -vm644 rules.d/* ../rules.d/{*.rules,README} /usr/lib/udev/rules.d/
+  install -vm644 hwdb.d/*  ../hwdb.d/{*.hwdb,README}   /usr/lib/udev/hwdb.d/
+  install -vm755 $(find src/udev -type f | grep -F -v ".") /usr/lib/udev
+  tar -xvf ../../udev-lfs-20230818.tar.xz
+  make -f udev-lfs-20230818/Makefile.lfs install
+  tar -xf ../../systemd-man-pages-254.tar.xz                            \
+    --no-same-owner --strip-components=1                              \
+    -C /usr/share/man --wildcards '*/udev*' '*/libudev*'              \
+                                  '*/systemd-'{hwdb,udevd.service}.8
+  sed 's/systemd\(\\\?-\)/udev\1/' /usr/share/man/man8/systemd-hwdb.8   \
+                                > /usr/share/man/man8/udev-hwdb.8
+  sed 's|lib.*udevd|sbin/udevd|'                                        \
+      /usr/share/man/man8/systemd-udevd.service.8                       \
+    > /usr/share/man/man8/udevd.8
+  rm  /usr/share/man/man8/systemd-*.8
+  udev-hwdb update
+  clean_sources systemd-254
+  log_compil_end "udev_systemd_254"
+}
+
+install_man_db() {
+  # TODO: might have to modify this if want to install systemd
+  config_sources man-db-2.11.2 xz
+  ./configure --prefix=/usr                         \
+            --docdir=/usr/share/doc/man-db-2.11.2 \
+            --sysconfdir=/etc                     \
+            --disable-setuid                      \
+            --enable-cache-owner=bin              \
+            --with-browser=/usr/bin/lynx          \
+            --with-vgrind=/usr/bin/vgrind         \
+            --with-grap=/usr/bin/grap             \
+            --with-systemdtmpfilesdir=            \
+            --with-systemdsystemunitdir=
+  make
+  make -k check
+  make install
+  clean_sources man-db-2.11.2
+  log_compil_end man-db
+}
+
+install_procps_ng() {
+  config_sources procps-ng-4.0.3 xz
+  ./configure --prefix=/usr                           \
+            --docdir=/usr/share/doc/procps-ng-4.0.3 \
+            --disable-static                        \
+            --disable-kill
+  make
+  make check
+  make install
+  clean_sources procps-ng-4.0.3
+  log_compil_end procps_ng
+}
+
+install_util_linux() {
+  config_sources util-linux-2.39.1 xz
+  sed -i '/test_mkfds/s/^/#/' tests/helpers/Makemodule.am
+  ./configure ADJTIME_PATH=/var/lib/hwclock/adjtime \
+            --bindir=/usr/bin    \
+            --libdir=/usr/lib    \
+            --runstatedir=/run   \
+            --sbindir=/usr/sbin  \
+            --disable-chfn-chsh  \
+            --disable-login      \
+            --disable-nologin    \
+            --disable-su         \
+            --disable-setpriv    \
+            --disable-runuser    \
+            --disable-pylibmount \
+            --disable-static     \
+            --without-python     \
+            --without-systemd    \
+            --without-systemdsystemunitdir \
+            --docdir=/usr/share/doc/util-linux-2.39.1
+  make
+  # Can be dangerous for the system, better to run it as booted or a vm
+  # chown -Rv tester .
+  # su tester -c "make -k check"
+  make install
+  clean_sources util-linux-2.39.1
+  log_compil_end util_linux
+}
+
+install_e2fsprogs() {
+  config_sources e2fsprogs-1.47.0 gz
+  mkdir -v build
+  cd       build
+  ../configure --prefix=/usr           \
+              --sysconfdir=/etc       \
+              --enable-elf-shlibs     \
+              --disable-libblkid      \
+              --disable-libuuid       \
+              --disable-uuidd         \
+              --disable-fsck
+  make
+  make check
+  make install
+  rm -fv /usr/lib/{libcom_err,libe2p,libext2fs,libss}.a
+  gunzip -v /usr/share/info/libext2fs.info.gz
+  makeinfo -o      doc/com_err.info ../lib/et/com_err.texinfo
+  install -v -m644 doc/com_err.info /usr/share/info
+  install-info --dir-file=/usr/share/info/dir /usr/share/info/com_err.info
+  sed 's/metadata_csum_seed,//' -i /etc/mke2fs.conf
+  clean_sources e2fsprogs-1.47.0
+  log_compil_end e2fsprogs
+}
+
+install_sysklogd() {
+  config_sources sysklogd-1.5.1 gz
+  sed -i '/Error loading kernel symbols/{n;n;d}' ksym_mod.c
+  sed -i 's/union wait/int/' syslogd.c
+  make
+  make BINDIR=/sbin install
+cat > /etc/syslog.conf << "EOF"
+# Begin /etc/syslog.conf
+
+auth,authpriv.* -/var/log/auth.log
+*.*;auth,authpriv.none -/var/log/sys.log
+daemon.* -/var/log/daemon.log
+kern.* -/var/log/kern.log
+mail.* -/var/log/mail.log
+user.* -/var/log/user.log
+*.emerg *
+
+# End /etc/syslog.conf
+EOF
+  clean_sources sysklogd-1.5.1
+  log_compil_end sysklogd
+}
+
+install_sysvinit() {
+  config_sources sysvinit-3.07 xz
+  patch -Np1 -i ../sysvinit-3.07-consolidated-1.patch
+  make
+  make install
+  clean_sources sysvinit-3.07
+  log_compil_end sysvinit
+}
+
+cleanup() {
+  rm -rf /tmp/*
+  find /usr/lib /usr/libexec -name \*.la -delete
+  find /usr -depth -name $(uname -m)-lfs-linux-gnu\* | xargs rm -rf
+  userdel -r tester
+}
+
 build_man_pages
 setup_iana_etc
 install_glibc
@@ -1088,3 +1449,24 @@ install_coreutils
 install_check
 install_diffutils
 install_gawk
+install_findutils
+install_groff
+install_grub
+install_gzip
+install_iproute
+install_kbd
+install_libpipeline
+install_make
+install_patch
+install_tar
+install_texinfo
+install_vim
+install_markupsafe
+install_jinja
+install_udev_systemd_254
+install_man_db
+install_procps_ng
+install_util_linux
+install_e2fsprogs
+install_sysklogd
+install_sysvinit
