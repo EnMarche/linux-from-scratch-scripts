@@ -18,16 +18,15 @@ HOME=$(eval  echo ~$SUDO_USER)
 
 backup() {
   echo backing up $LFS
-  # mountpoint -q $LFS/dev/shm && umount $LFS/dev/shm
-  # umount $LFS/dev/pts
-  # umount $LFS/{sys,proc,run,dev}
+  mountpoint -q $LFS/dev/shm && umount $LFS/dev/shm
+  mountpoint -q $LFS/dev/pts && umount -f $LFS/dev/pts
+  mountpoint -q $LFS/sys && umount -f $LFS/sys
+  mountpoint -q $LFS/proc && umount -f $LFS/proc
+  mountpoint -q $LFS/run && umount -f $LFS/run
+  mountpoint -q $LFS/dev && umount -f $LFS/dev
 
   cd $LFS
-  if hash pv 2>/dev/null; then
-      tar -cJpf - . |  pv -s $(du -sb . | awk '{print $1}') > $HOME/lfs-temp-tools-12.0.tar.xz
-    else
-      tar -cJpf $HOME/lfs-temp-tools-12.0.tar.xz .
-    fi
+  tar -cJpfv $HOME/lfs-temp-tools-12.0.tar.xz .
 }
 
 
@@ -70,10 +69,37 @@ usage() {
     echo "Usage: $0 [OPTIONS]" 1>&2;
     echo -ne "Options:\n  -b  Backup \$LFS partition\n"
     echo -ne "  -r  Restore \$LFS partition\n"
+    echo -ne "  -m  Only mount virtual filesystem\n"
+    echo -ne "  -c  Chroot into lfs\n"
 }
 
-while getopts ":br" opt; do
+mount_vfs() {
+  mountpoint -q $LFS/dev || mount -v --bind /dev $LFS/dev
+  mountpoint -q $LFS/dev/pts || mount -v --bind /dev/pts $LFS/dev/pts
+  mountpoint -q $LFS/proc || mount -vt proc proc $LFS/proc
+  mountpoint -q $LFS/sys || mount -vt sysfs sysfs $LFS/sys
+  mountpoint -q $LFS/run || mount -vt tmpfs tmpfs $LFS/run
+    if [ -h $LFS/dev/shm ]; then
+    mkdir -pv $LFS/$(readlink $LFS/dev/shm)
+  else
+    mountpoint -q $LFS/dev/shm || mount -t tmpfs -o nosuid,nodev tmpfs $LFS/dev/shm
+  fi
+}
+
+while getopts ":brmc" opt; do
   case ${opt} in
+    c )
+      chroot "$LFS" /usr/bin/env -i   \
+        HOME=/root                  \
+        TERM="$TERM"                \
+        PS1='(lfs chroot) \u:\w\$ ' \
+        PATH=/usr/bin:/usr/sbin     \
+        /bin/bash --login
+      ;;
+    m )
+      mount_vfs
+      exit 0
+      ;;
     b )
       backup
       exit 0

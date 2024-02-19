@@ -4,12 +4,20 @@ set -euo pipefail
 LFS_USER=lfs
 LFS=/mnt/lfs
 
-
+get_version() {
+  curr="$(pwd)"
+  cd $LFS/sources
+  folder=$(ls -d $1*.tar.*)
+  folder_with_ver="$(echo ${folder%*.tar.*})"
+  echo ${folder_with_ver/"$1-"/""}
+  cd "$curr"
+}
 
 compile_binutils() {
+    version="$(get_version binutils)"
     cd $LFS/sources
-    tar -xf binutils-2.41.tar.xz
-    cd binutils-2.41
+    tar -xf binutils-$version.tar.xz
+    cd binutils-$version
     mkdir -pv build
     cd build
     ../configure --prefix=$LFS/tools \
@@ -21,59 +29,61 @@ compile_binutils() {
     make
     make install
     cd $LFS/sources
-    rm -rf binutils-2.41
+    rm -rf binutils-$version
     echo -ne "\n\nCompiling binutils...done\n"
     sleep 1
 }
 
 install_cross_gcc() {
-    cd $LFS/sources
-    tar -xf ./gcc-13.2.0.tar.xz
-    cd gcc-13.2.0
-    tar -xf ../mpfr-4.2.0.tar.xz
-    mv -v mpfr-4.2.0 mpfr
-    tar -xf ../gmp-6.3.0.tar.xz
-    mv -v gmp-6.3.0 gmp
-    tar -xf ../mpc-1.3.1.tar.gz
-    mv -v mpc-1.3.1 mpc
+    # cd $LFS/sources
+    # version="$(get_version gcc)"
+    # glibc_version="$(get_version glibc)"
+    # tar -xf ./gcc-*.tar.xz
+    # cd gcc-$version
+    # tar -xf ../mpfr-*.tar.xz
+    # mv -v "$(ls -d mpfr-*)" mpfr
+    # tar -xf ../gmp-*.tar.xz
+    # mv -v "$(ls -d gmp-*)" gmp
+    # tar -xf ../mpc-*.tar.gz
+    # mv -v "$(ls -d mpc-*)" mpc
 
-    case $(uname -m) in x86_64)
-        sed -e '/m64=/s/lib64/lib/' \
-            -i.orig gcc/config/i386/t-linux64
-        ;;
-    esac
+    # case $(uname -m) in x86_64)
+    #     sed -e '/m64=/s/lib64/lib/' \
+    #         -i.orig gcc/config/i386/t-linux64
+    #     ;;
+    # esac
 
-    mkdir -pv build
-    cd       build
+    # mkdir -pv build
+    # cd       build
 
-    ../configure                 \
-    --target=$LFS_TGT         \
-    --prefix=$LFS/tools       \
-    --with-glibc-version=2.38 \
-    --with-sysroot=$LFS       \
-    --with-newlib             \
-    --without-headers         \
-    --enable-default-pie      \
-    --enable-default-ssp      \
-    --disable-nls             \
-    --disable-shared          \
-    --disable-multilib        \
-    --disable-threads         \
-    --disable-libatomic       \
-    --disable-libgomp         \
-    --disable-libquadmath     \
-    --disable-libssp          \
-    --disable-libvtv          \
-    --disable-libstdcxx       \
-    --enable-languages=c,c++
+    # ../configure                 \
+    # --target=$LFS_TGT         \
+    # --prefix=$LFS/tools       \
+    # --with-glibc-version=$glibc_version \
+    # --with-sysroot=$LFS       \
+    # --with-newlib             \
+    # --without-headers         \
+    # --enable-default-pie      \
+    # --enable-default-ssp      \
+    # --disable-nls             \
+    # --disable-shared          \
+    # --disable-multilib        \
+    # --disable-threads         \
+    # --disable-libatomic       \
+    # --disable-libgomp         \
+    # --disable-libquadmath     \
+    # --disable-libssp          \
+    # --disable-libvtv          \
+    # --disable-libstdcxx       \
+    # --enable-languages=c,c++
 
-    make && make install
+    # make && make install
 
-    cd ..
-    cat gcc/limitx.h gcc/glimits.h gcc/limity.h > \
-    `dirname $($LFS_TGT-gcc -print-libgcc-file-name)`/include/limits.h
-    cd $LFS/sources
-    rm -rf gcc-13.2.0
+    # cd ..
+    # cat gcc/limitx.h gcc/glimits.h gcc/limity.h > \
+    # `dirname $($LFS_TGT-gcc -print-libgcc-file-name)`/include/limits.h
+    # cd $LFS/sources
+    rm -rf gcc-*.tar.*
     echo -ne "\n\nInstalling cross gcc...done\n"
     sleep 1
 
@@ -81,22 +91,23 @@ install_cross_gcc() {
 
 install_linux_headers() {
     cd $LFS/sources
-    tar -xf linux-6.4.12.tar.xz
-    cd linux-6.4.12
+    tar -xf linux-*.tar.xz
+    cd "$(ls -d */ | grep linux-)"
     make mrproper
     make headers
     find usr/include -type f ! -name '*.h' -delete
     cp -rv usr/include $LFS/usr
     cd $LFS/sources
-    rm -rf linux-6.4.12
+    rm -rf "$(ls -d */ | grep linux-)"
     echo -ne "\n\nInstalling linux headers...done\n"
     sleep 1
 }
 
 install_glibc() {
+    version="$(get_version glibc)"
     cd $LFS/sources
-    tar -xf glibc-2.38.tar.xz
-    cd glibc-2.38
+    tar -xf glibc-$version.tar.xz
+    cd glibc-$version
 
     case $(uname -m) in
         i?86)   ln -sfv ld-linux.so.2 $LFS/lib/ld-lsb.so.3
@@ -106,7 +117,7 @@ install_glibc() {
         ;;
     esac
 
-    patch -Np1 -i ../glibc-2.38-fhs-1.patch
+    patch -Np1 -i ../glibc-$version-fhs-1.patch
     mkdir -pv build
     cd build
     echo "rootsbindir=/usr/sbin" > configparms
@@ -125,15 +136,16 @@ install_glibc() {
     readelf -l a.out | grep ld-linux
     rm -v a.out
     cd $LFS/sources
-    rm -rf glibc-2.38
+    rm -rf glibc-$version
     echo -ne "\n\nInstalling glibc...done\n"
     sleep 1
 }
 
 install_lib_stdc++() {
     cd $LFS/sources
-    tar -xf gcc-13.2.0.tar.xz
-    cd gcc-13.2.0
+    gcc_version="$(get_version gcc)"
+    tar -xf gcc-$gcc_version.tar.xz
+    cd gcc-$gcc_version
     mkdir -v build
     cd       build
     ../libstdc++-v3/configure           \
@@ -143,7 +155,7 @@ install_lib_stdc++() {
     --disable-multilib              \
     --disable-nls                   \
     --disable-libstdcxx-pch         \
-    --with-gxx-include-dir=/tools/$LFS_TGT/include/c++/13.2.0
+    --with-gxx-include-dir=/tools/$LFS_TGT/include/c++/$gcc_version
     ../libstdc++-v3/configure           \
     --host=$LFS_TGT                 \
     --build=$(../config.guess)      \
@@ -151,15 +163,15 @@ install_lib_stdc++() {
     --disable-multilib              \
     --disable-nls                   \
     --disable-libstdcxx-pch         \
-    --with-gxx-include-dir=/tools/$LFS_TGT/include/c++/13.2.0
+    --with-gxx-include-dir=/tools/$LFS_TGT/include/c++/$gcc_version
 
     make DESTDIR=$LFS install
     cd $LFS/sources
-    rm -rf gcc-13.2.0
+    rm -rf gcc-$gcc_version
     rm -v $LFS/usr/lib/lib{stdc++,stdc++fs,supc++}.la
 }
 
-compile_binutils
+# compile_binutils
 install_cross_gcc
 install_linux_headers
 install_glibc

@@ -80,7 +80,7 @@ mount_fake_partition() {
 
 setup_md5sums() {
     cd $LFS/sources
-    wget https://www.linuxfromscratch.org/lfs/view/stable/md5sums
+    wget https://www.linuxfromscratch.org/lfs/view/systemd/md5sums
     cd $LFS/sources
         md5sum -c md5sums
     cd $LFS
@@ -88,13 +88,15 @@ setup_md5sums() {
 }
 
 install_packages() {
-    if [ $SKIP_INSTALL_PACKAGES == false ]; then
+    echo "Installing packages..."
+    echo "$SKIP_INSTALL_PACKAGES"
+    if [ "$SKIP_INSTALL_PACKAGES" == "false" ]; then
         rm -rf $LFS/sources
         mkdir -v $LFS/sources
         chmod -v a+wt $LFS/sources
         cd $LFS
-        wget https://www.linuxfromscratch.org/lfs/view/stable/wget-list-sysv --output-file=wget-log-sysv
-        wget --input-file=wget-list-sysv --continue --directory-prefix=$LFS/sources
+        wget https://www.linuxfromscratch.org/lfs/view/systemd/wget-list-systemd --output-file=wget-log-sysv
+        wget --input-file=wget-list-systemd --continue --directory-prefix=$LFS/sources
         setup_md5sums
         chown root:root $LFS/sources/*
     fi
@@ -167,6 +169,7 @@ cp -v $SCRIPT_DIR/build_temp_tools.sh $LFS
 cp -v $SCRIPT_DIR/prepare_chroot.sh $LFS
 cp -v $SCRIPT_DIR/chroot_build_dirs.sh $LFS
 cp -v $SCRIPT_DIR/build_chroot_additional_tools.sh $LFS
+cp -v $SCRIPT_DIR/setup_systemv.sh $LFS
 
 echo -ne "\n\n\nNow run the following commands:\n"
 echo "su - $LFS_USER"

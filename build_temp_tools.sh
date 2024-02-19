@@ -6,15 +6,25 @@ set -euo pipefail
 
 LFS=/mnt/lfs
 
+get_version() {
+  curr="$(pwd)"
+  cd $LFS/sources
+  folder=$(ls -d $1*.tar.*)
+  folder_with_ver="$(echo ${folder%*.tar.*})"
+  echo ${folder_with_ver/"$1-"/""}
+  cd "$curr"
+}
+
 config_sources() {
   cd $LFS/sources
-  tar -xf ${1}.tar.${2}
-  cd ${1}
+  echo extracting $1.tar.*
+  tar -xf ${1}*.tar.*
+  cd "$(ls -d */ | grep ${1})"
 }
 
 clean_sources() {
   cd $LFS/sources
-  rm -rf ${1}
+  rm -rf $(ls -d */ | grep ${1}*)
 }
 
 log_compil_end() {
@@ -23,18 +33,18 @@ log_compil_end() {
 }
 
 compile_m4() {
-    config_sources m4-1.4.19 xz
+    config_sources m4 xz
     ./configure --prefix=/usr   \
             --host=$LFS_TGT \
             --build=$(build-aux/config.guess)
     make
     make DESTDIR=$LFS install
-    clean_sources m4-1.4.19
+    clean_sources m4
     log_compil_end m4
 }
 
 compile_ncurses() {
-    config_sources ncurses-6.4 gz
+    config_sources ncurses gz
     sed -i s/mawk// configure
     mkdir -pv build
     cd build
@@ -59,12 +69,12 @@ compile_ncurses() {
     make DESTDIR=$LFS TIC_PATH=$(pwd)/build/progs/tic install
     echo "INPUT(-lncursesw)" > $LFS/usr/lib/libncurses.so
 
-    clean_sources ncurses-6.4
+    clean_sources ncurses
     log_compil_end ncurses
 }
 
 compile_bash() {
-    config_sources bash-5.2.15 gz
+    config_sources bash gz
     ./configure --prefix=/usr                      \
             --build=$(sh support/config.guess) \
             --host=$LFS_TGT                    \
@@ -72,12 +82,12 @@ compile_bash() {
     make
     make DESTDIR=$LFS install
     ln -sfv bash $LFS/bin/sh
-    clean_sources bash-5.2.15
+    clean_sources bash
     log_compil_end bash
 }
 
 compile_coreutils() {
-    config_sources coreutils-9.3 xz
+    config_sources coreutils xz
     ./configure --prefix=/usr                     \
             --host=$LFS_TGT                   \
             --build=$(build-aux/config.guess) \
@@ -90,23 +100,23 @@ compile_coreutils() {
     mkdir -pv $LFS/usr/share/man/man8
     mv -v $LFS/usr/share/man/man1/chroot.1 $LFS/usr/share/man/man8/chroot.8
     sed -i 's/"1"/"8"/'                    $LFS/usr/share/man/man8/chroot.8
-    clean_sources coreutils-9.3
+    clean_sources coreutils
     log_compil_end coreutils
 }
 
 compile_diffutils() {
-    config_sources diffutils-3.10 xz
+    config_sources diffutils xz
     ./configure --prefix=/usr   \
             --host=$LFS_TGT \
             --build=$(./build-aux/config.guess)
     make
     make DESTDIR=$LFS install
-    clean_sources diffutils-3.10
+    clean_sources diffutils
     log_compil_end diffutils
 }
 
 compile_file() {
-  config_sources file-5.45 gz
+  config_sources file gz
   mkdir build
   cd build
   ../configure --disable-bzlib      \
@@ -119,116 +129,117 @@ compile_file() {
   make FILE_COMPILE=$(pwd)/build/src/file
   make DESTDIR=$LFS install
   rm -v $LFS/usr/lib/libmagic.la
-  clean_sources file-5.45
+  clean_sources file
   log_compil_end file
 }
 
 compile_findutils() {
-  config_sources findutils-4.9.0 xz
+  config_sources findutils xz
   ./configure --prefix=/usr                   \
             --localstatedir=/var/lib/locate \
             --host=$LFS_TGT                 \
             --build=$(build-aux/config.guess)
   make
   make DESTDIR=$LFS install
-  clean_sources findutils-4.9.0
+  clean_sources findutils
   log_compil_end findutils
 }
 
 compile_gawk() {
-  config_sources gawk-5.2.2 xz
+  config_sources gawk xz
   sed -i 's/extras//' Makefile.in
   ./configure --prefix=/usr   \
             --host=$LFS_TGT \
             --build=$(build-aux/config.guess)
   make
   make DESTDIR=$LFS install
-  clean_sources gawk-5.2.2
+  clean_sources gawk
   log_compil_end gawk
 }
 
 compile_grep() {
-  config_sources grep-3.11 xz
+  config_sources grep xz
   ./configure --prefix=/usr   \
             --host=$LFS_TGT \
             --build=$(./build-aux/config.guess)
   make
   make DESTDIR=$LFS install
-  clean_sources grep-3.11
+  clean_sources grep
   log_compil_end grep
 }
 
 compile_gzip() {
-  config_sources gzip-1.12 xz
+  config_sources gzip xz
   ./configure --prefix=/usr   \
             --host=$LFS_TGT
   make
   make DESTDIR=$LFS install
-  clean_sources gzip-1.12
+  clean_sources gzip
   log_compil_end gzip
 }
 
 compile_make() {
-  config_sources make-4.4.1 gz
+  config_sources make gz
   ./configure --prefix=/usr   \
               --without-guile \
               --host=$LFS_TGT \
               --build=$(build-aux/config.guess)
   make
   make DESTDIR=$LFS install
-  clean_sources make-4.4.1
+  clean_sources make
   log_compil_end make
 }
 
 compile_patch() {
-  config_sources patch-2.7.6 xz
+  config_sources patch xz
 ./configure --prefix=/usr   \
             --host=$LFS_TGT \
             --build=$(build-aux/config.guess)
   make
   make DESTDIR=$LFS install
-  clean_sources patch-2.7.6
+  clean_sources patch
   log_compil_end patch
 }
 
 compile_sed() {
-  config_sources sed-4.9 xz
+  config_sources sed xz
   ./configure --prefix=/usr   \
             --host=$LFS_TGT \
             --build=$(build-aux/config.guess)
   make
   make DESTDIR=$LFS install
-  clean_sources sed-4.9
+  clean_sources sed
   log_compil_end sed
 }
 
 compile_tar() {
-  config_sources tar-1.35 xz
+  config_sources tar xz
   ./configure --prefix=/usr   \
             --host=$LFS_TGT \
             --build=$(build-aux/config.guess)
   make
   make DESTDIR=$LFS install
-  clean_sources tar-1.35
+  clean_sources tar
   log_compil_end tar
 }
 
 compile_xz() {
-  config_sources xz-5.4.4 xz
+  config_sources xz xz
+  version="$(get_version xz)"
   ./configure --prefix=/usr                     \
               --host=$LFS_TGT                   \
               --build=$(build-aux/config.guess) \
               --disable-static                  \
-              --docdir=/usr/share/doc/xz-5.4.4
+              --docdir=/usr/share/doc/xz-$version
   make
   make DESTDIR=$LFS install
   rm -v $LFS/usr/lib/liblzma.la
-  clean_sources xz-5.4.4
+  clean_sources xz
   log_compil_end xz
 }
 
 compile_binutils_pass2() {
-  config_sources binutils-2.41 xz
+  config_sources binutils xz
   sed '6009s/$add_dir//' -i ltmain.sh
   mkdir -pv build
   cd build
@@ -244,18 +255,18 @@ compile_binutils_pass2() {
   make
   make DESTDIR=$LFS install
   rm -v $LFS/usr/lib/lib{bfd,ctf,ctf-nobfd,opcodes,sframe}.{a,la}
-  clean_sources binutils-2.41
+  clean_sources binutils
   log_compil_end "binutils (second pass)"
 }
 
 compile_gcc_pass2() {
-  config_sources gcc-13.2.0 xz
-  tar -xf ../mpfr-4.2.0.tar.xz
-  mv -v mpfr-4.2.0 mpfr
-  tar -xf ../gmp-6.3.0.tar.xz
-  mv -v gmp-6.3.0 gmp
-  tar -xf ../mpc-1.3.1.tar.gz
-  mv -v mpc-1.3.1 mpc
+  config_sources gcc xz
+  tar -xf ../mpfr-*.tar.xz
+  mv -v "$(ls -d mpfr*)" mpfr
+  tar -xf ../gmp-*.tar.xz
+  mv -v "$(ls -d gmp*)" gmp
+  tar -xf ../mpc-*.tar.gz
+  mv -v "$(ls -d mpc*)" mpc
   case $(uname -m) in
     x86_64)
       sed -e '/m64=/s/lib64/lib/' -i.orig gcc/config/i386/t-linux64
@@ -288,7 +299,7 @@ compile_gcc_pass2() {
   make
   make DESTDIR=$LFS install
   ln -sv gcc $LFS/usr/bin/cc
-  clean_sources gcc-13.2.0
+  clean_sources gcc
   log_compil_end "gcc (second pass)"
 }
 
