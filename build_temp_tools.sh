@@ -19,12 +19,12 @@ config_sources() {
   cd $LFS/sources
   echo extracting $1.tar.*
   tar -xf ${1}*.tar.*
-  cd "$(ls -d */ | grep ${1})"
+  cd "$(ls -d */ | grep ^${1})"
 }
 
 clean_sources() {
   cd $LFS/sources
-  rm -rf $(ls -d */ | grep ${1}*)
+  rm -rf $(ls -d */ | grep ^${1}*)
 }
 
 log_compil_end() {

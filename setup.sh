@@ -169,6 +169,8 @@ cp -v $SCRIPT_DIR/build_temp_tools.sh $LFS
 cp -v $SCRIPT_DIR/prepare_chroot.sh $LFS
 cp -v $SCRIPT_DIR/chroot_build_dirs.sh $LFS
 cp -v $SCRIPT_DIR/build_chroot_additional_tools.sh $LFS
+cp -v $SCRIPT_DIR/build_sys_software.sh $LFS
+cp -v $SCRIPT_DIR/backup.sh $LFS
 cp -v $SCRIPT_DIR/setup_systemv.sh $LFS
 
 echo -ne "\n\n\nNow run the following commands:\n"

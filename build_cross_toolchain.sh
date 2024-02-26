@@ -35,55 +35,55 @@ compile_binutils() {
 }
 
 install_cross_gcc() {
-    # cd $LFS/sources
-    # version="$(get_version gcc)"
-    # glibc_version="$(get_version glibc)"
-    # tar -xf ./gcc-*.tar.xz
-    # cd gcc-$version
-    # tar -xf ../mpfr-*.tar.xz
-    # mv -v "$(ls -d mpfr-*)" mpfr
-    # tar -xf ../gmp-*.tar.xz
-    # mv -v "$(ls -d gmp-*)" gmp
-    # tar -xf ../mpc-*.tar.gz
-    # mv -v "$(ls -d mpc-*)" mpc
+    cd $LFS/sources
+    version="$(get_version gcc)"
+    glibc_version="$(get_version glibc)"
+    tar -xf ./gcc-*.tar.xz
+    cd gcc-$version
+    tar -xf ../mpfr-*.tar.xz
+    mv -v "$(ls -d mpfr-*)" mpfr
+    tar -xf ../gmp-*.tar.xz
+    mv -v "$(ls -d gmp-*)" gmp
+    tar -xf ../mpc-*.tar.gz
+    mv -v "$(ls -d mpc-*)" mpc
 
-    # case $(uname -m) in x86_64)
-    #     sed -e '/m64=/s/lib64/lib/' \
-    #         -i.orig gcc/config/i386/t-linux64
-    #     ;;
-    # esac
+    case $(uname -m) in x86_64)
+        sed -e '/m64=/s/lib64/lib/' \
+            -i.orig gcc/config/i386/t-linux64
+        ;;
+    esac
 
-    # mkdir -pv build
-    # cd       build
+    mkdir -pv build
+    cd       build
 
-    # ../configure                 \
-    # --target=$LFS_TGT         \
-    # --prefix=$LFS/tools       \
-    # --with-glibc-version=$glibc_version \
-    # --with-sysroot=$LFS       \
-    # --with-newlib             \
-    # --without-headers         \
-    # --enable-default-pie      \
-    # --enable-default-ssp      \
-    # --disable-nls             \
-    # --disable-shared          \
-    # --disable-multilib        \
-    # --disable-threads         \
-    # --disable-libatomic       \
-    # --disable-libgomp         \
-    # --disable-libquadmath     \
-    # --disable-libssp          \
-    # --disable-libvtv          \
-    # --disable-libstdcxx       \
-    # --enable-languages=c,c++
+    ../configure                 \
+    --target=$LFS_TGT         \
+    --prefix=$LFS/tools       \
+    --with-glibc-version=$glibc_version \
+    --with-sysroot=$LFS       \
+    --with-newlib             \
+    --without-headers         \
+    --enable-default-pie      \
+    --enable-default-ssp      \
+    --disable-nls             \
+    --disable-shared          \
+    --disable-multilib        \
+    --disable-threads         \
+    --disable-libatomic       \
+    --disable-libgomp         \
+    --disable-libquadmath     \
+    --disable-libssp          \
+    --disable-libvtv          \
+    --disable-libstdcxx       \
+    --enable-languages=c,c++
 
-    # make && make install
+    make && make install
 
-    # cd ..
-    # cat gcc/limitx.h gcc/glimits.h gcc/limity.h > \
-    # `dirname $($LFS_TGT-gcc -print-libgcc-file-name)`/include/limits.h
-    # cd $LFS/sources
-    rm -rf gcc-*.tar.*
+    cd ..
+    cat gcc/limitx.h gcc/glimits.h gcc/limity.h > \
+    `dirname $($LFS_TGT-gcc -print-libgcc-file-name)`/include/limits.h
+    cd $LFS/sources
+    rm -rf gcc-$version
     echo -ne "\n\nInstalling cross gcc...done\n"
     sleep 1
 
@@ -171,7 +171,7 @@ install_lib_stdc++() {
     rm -v $LFS/usr/lib/lib{stdc++,stdc++fs,supc++}.la
 }
 
-# compile_binutils
+compile_binutils
 install_cross_gcc
 install_linux_headers
 install_glibc

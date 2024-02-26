@@ -6,7 +6,7 @@ config_sources() {
   cd /sources
   echo extracting "$1.tar.*"
   tar -xf "$(ls ${1}*.tar.*)"
-  cd "$(ls -d */ | grep ${1})"
+  cd "$(ls -d */ | grep ^${1})"
 }
 
 get_version() {
@@ -20,7 +20,7 @@ get_version() {
 
 clean_sources() {
   cd /sources
-  rm -rf "$(ls -d */ | grep ${1}*)"
+  rm -rf "$(ls -d */ | grep ^${1}*)"
 }
 
 log_compil_end() {
@@ -130,4 +130,5 @@ cleanup
 echo -ne "\n\n\nNow would be a good time to backup the LFS partition\n"
 echo "You can do this by running the following command, as root (not chroot):"
 echo "/backup.sh -b"
+echo "Then, you can continue with the next script, as user lfs: /build_sys_software.sh"
 exit 0
