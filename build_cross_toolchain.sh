@@ -129,7 +129,7 @@ install_glibc() {
       --with-headers=$LFS/usr/include    \
       libc_cv_slibdir=/usr/lib
 
-    make
+    MAKEFLAGS=-j1 make
     make DESTDIR=$LFS install
     sed '/RTLDLIST=/s@/usr@@g' -i $LFS/usr/bin/ldd
     echo 'int main(){}' | $LFS_TGT-gcc -xc -

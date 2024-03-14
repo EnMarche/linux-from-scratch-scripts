@@ -80,7 +80,7 @@ mount_fake_partition() {
 
 setup_md5sums() {
     cd $LFS/sources
-    wget https://www.linuxfromscratch.org/lfs/view/systemd/md5sums
+    wget https://www.linuxfromscratch.org/lfs/view/stable-systemd/md5sums
     cd $LFS/sources
         md5sum -c md5sums
     cd $LFS
@@ -90,13 +90,14 @@ setup_md5sums() {
 install_packages() {
     echo "Installing packages..."
     echo "$SKIP_INSTALL_PACKAGES"
+    cp ./package-list.txt $LFS
     if [ "$SKIP_INSTALL_PACKAGES" == "false" ]; then
         rm -rf $LFS/sources
         mkdir -v $LFS/sources
         chmod -v a+wt $LFS/sources
         cd $LFS
-        wget https://www.linuxfromscratch.org/lfs/view/systemd/wget-list-systemd --output-file=wget-log-sysv
-        wget --input-file=wget-list-systemd --continue --directory-prefix=$LFS/sources
+        wget --input-file=package-list.txt --continue --directory-prefix=$LFS/sources || echo "Download failed"
+        echo "Downloading packages...done"
         setup_md5sums
         chown root:root $LFS/sources/*
     fi

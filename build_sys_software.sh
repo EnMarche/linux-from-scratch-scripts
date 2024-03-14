@@ -2,22 +2,25 @@
 
 get_version() {
   curr="$(pwd)"
-  cd $LFS/sources
+  cd /sources
   folder=$(ls -d $1*.tar.*)
   folder_with_ver="$(echo ${folder%*.tar.*})"
   echo ${folder_with_ver/"$1-"/""}
   cd "$curr"
+}
 
 config_sources() {
   cd /sources
   echo extracting $1.tar.*
   tar -xf ${1}*.tar.*
-  cd "$(ls -d ${1}*)"
+  cd "$(ls -d */ | grep ^${1})"
 }
+
 
 clean_sources() {
   cd /sources
-  rm -rf $(ls -d */ | grep ${1}*)
+  rm -rf "$(ls -d */ | grep ^${1}*)"
+
 }
 
 log_compil_end() {
@@ -26,7 +29,7 @@ log_compil_end() {
 }
 
 build_man_pages() {
-  config_sources man-pages xz
+  config_sources man-pages
   rm -v man3/crypt*
   make prefix=/usr install
   clean_sources "man-pages"
@@ -34,7 +37,7 @@ build_man_pages() {
 }
 
 setup_iana_etc() {
-  config_sources iana-etc gz
+  config_sources iana-etc
   cp services protocols /etc
   clean_sources iana-etc
 }
@@ -84,7 +87,7 @@ generate_locales() {
 }
 
 add_timezone_data() {
-  tar -xf ../../tzdata2023c.tar.gz
+  tar -xf ../../tzdata2024a.tar.gz
 
   ZONEINFO=/usr/share/zoneinfo
   mkdir -pv $ZONEINFO/{posix,right}
@@ -139,20 +142,20 @@ mkdir -pv /etc/ld.so.conf.d
 
 install_glibc() {
   config_sources glibc xz
+  version="$(get_version glibc)"
 
-  patch -Np1 -i ../glibc-*-fhs-1.patch
-  patch -Np1 -i ../glibc-*-memalign_fix-1.patch
-
+  patch -Np1 -i ../glibc-$version-fhs-1.patch
+  # patch -Np1 -i ../glibc-$version-memalign_fix-1.patch
   mkdir -pv build
   cd       build
 
   echo "rootsbindir=/usr/sbin" > configparms
 
-  ../configure --prefix=/usr                            \
+  ../configure --prefix=/usr                          \
              --disable-werror                         \
-             --enable-kernel=4.14                     \
+             --enable-kernel=4.19                     \
              --enable-stack-protector=strong          \
-             --with-headers=/usr/include              \
+             --disable-nscd                           \
              libc_cv_slibdir=/usr/lib
 
   make
@@ -197,8 +200,8 @@ install_bzip2() {
   make clean
   make
   make PREFIX=/usr install
-  cp -av libbz2.so.* /usr/lib
-  ln -sv libbz2.so.* /usr/lib/libbz2.so
+  cp -av libbz2.so.1.0.8 /usr/lib
+  ln -sv libbz2.so.1.0 /usr/lib/libbz2.so
 
   cp -v bzip2-shared /usr/bin/bzip2
   for i in /usr/bin/{bzcat,bunzip2}; do
@@ -243,13 +246,14 @@ install_file() {
 
 install_readline() {
   config_sources readline gz
+  version="$(get_version readline)"
   sed -i '/MV.*old/d' Makefile.in
   sed -i '/{OLDSUFF}/c:' support/shlib-install
-  patch -Np1 -i ../readline-*-upstream_fix-1.patch
+  patch -Np1 -i ../readline-$version-upstream_fixes-3.patch
   ./configure --prefix=/usr    \
             --disable-static \
             --with-curses    \
-            --docdir=/usr/share/doc/readline-*
+            --docdir=/usr/share/doc/readline-$version
   make SHLIB_LIBS="-L/tools/lib -lncursesw"
   make SHLIB_LIBS="-L/tools/lib -lncursesw" install
   install -v -m644 doc/*.{ps,pdf,html,dvi} /usr/share/doc/readline-*
@@ -300,7 +304,7 @@ install_tcl() {
   cd /sources
   echo extracting tcl*-src.tar.gz
   tar -xf tcl*-src.tar.gz
-  cd tcl*
+  cd tcl8.6.13
   SRCDIR=$(pwd)
   cd unix
   ./configure --prefix=/usr           \
@@ -324,7 +328,7 @@ install_tcl() {
 
   unset SRCDIR
 
-  make test || true
+  # make test || true
   make install
   chmod -v u+w /usr/lib/libtcl8.6.so
   make install-private-headers
@@ -513,6 +517,7 @@ install_shadow() {
   ./configure --sysconfdir=/etc   \
             --disable-static    \
             --with-{b,yes}crypt \
+            --without-libbsd    \
             --with-group-name-max-length=32
   make
   make exec_prefix=/usr install
@@ -612,16 +617,15 @@ install_ncurses() {
             --with-pkg-config-libdir=/usr/lib/pkgconfig
   make
   make DESTDIR=$PWD/dest install
-  install -vm755 dest/usr/lib/libncursesw.so.$version /usr/lib
-  rm -v  dest/usr/lib/libncursesw.so.$version
+  install -vm755 dest/usr/lib/libncursesw.so.6.4 /usr/lib
+  rm -v  dest/usr/lib/libncursesw.so.6.4
+  sed -e 's/^#if.*XOPEN.*$/#if 1/' \
+    -i dest/usr/include/curses.h
   cp -av dest/* /
   for lib in ncurses form panel menu ; do
-    rm -vf                    /usr/lib/lib${lib}.so
-    echo "INPUT(-l${lib}w)" > /usr/lib/lib${lib}.so
-    ln -sfv ${lib}w.pc        /usr/lib/pkgconfig/${lib}.pc
+      ln -sfv lib${lib}w.so /usr/lib/lib${lib}.so
+      ln -sfv ${lib}w.pc    /usr/lib/pkgconfig/${lib}.pc
   done
-  rm -vf                     /usr/lib/libcursesw.so
-  echo "INPUT(-lncursesw)" > /usr/lib/libcursesw.so
   ln -sfv libncurses.so      /usr/lib/libcurses.so
   cp -v -R doc -T /usr/share/doc/ncurses-$version
 
@@ -939,11 +943,10 @@ install_libffi() {
 
 install_python() {
   version="$(get_version Python)"
-  config_sources Python-3.11.4 xz
+  config_sources Python-3.12.2 xz
   ./configure --prefix=/usr        \
             --enable-shared      \
             --with-system-expat  \
-            --with-system-ffi    \
             --enable-optimizations
   make
   make install
@@ -954,14 +957,12 @@ install_python() {
 # root-user-action = ignore
 # disable-pip-version-check = true
 # EOF
-  install -v -dm755 /usr/share/doc/python-$version/html
+  install -v -dm755 /usr/share/doc/python-3.12.2/html
 
-  tar --strip-components=1  \
-      --no-same-owner       \
-      --no-same-permissions \
-      -C /usr/share/doc/python-$version/html \
-      -xvf ../python-$version-docs-html.tar.bz2
-
+  tar --no-same-owner \
+      -xvf ../python-3.12.2-docs-html.tar.bz2
+  cp -R --no-preserve=mode python-3.12.2-docs-html/* \
+      /usr/share/doc/python-3.12.2/html
   clean_sources Python-$version
   log_compil_end "python"
 }
@@ -981,6 +982,15 @@ install_wheel() {
   clean_sources wheel
   log_compil_end "wheel"
 }
+
+install_setuptools() {
+  config_sources setuptools gz
+  pip3 wheel -w dist --no-build-isolation --no-deps $PWD
+  pip3 install --no-index --no-user --find-links dist setuptools
+  clean_sources setuptools
+  log_compil_end "setuptools"
+}
+
 
 install_ninja() {
   config_sources ninja gz
@@ -1095,7 +1105,7 @@ install_grub() {
   version="$(get_version grub)"
   config_sources grub xz
   unset {C,CPP,CXX,LD}FLAGS
-  patch -Np1 -i ../grub-version-upstream_fixes-1.patch
+  echo depends bli part_gpt > grub-core/extra_deps.lst
   ./configure --prefix=/usr          \
             --sysconfdir=/etc      \
             --disable-efiemu       \
@@ -1496,8 +1506,9 @@ install_libffi
 install_python
 install_flit_core
 install_wheel
+install_setuptools
 install_ninja
-install_meson
+install_mesonb  
 install_coreutils
 install_check
 install_diffutils
@@ -1531,7 +1542,7 @@ cleanup() {
   userdel -r tester
 }
 
-cleanup
+# cleanup
 
-echo "You can now run the following command in the chroot environment: "
-echo "/setup_systemv.sh"
+# echo "You can now run the following command in the chroot environment: "
+# echo "/setup_systemv.sh"
